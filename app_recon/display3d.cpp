@@ -24,7 +24,7 @@ Display::Display(int width, int height)
 	glutInit(&empty_argc, &empty_argv);
 	glutInitDisplayMode(GLUT_RGBA|GLUT_DOUBLE|GLUT_DEPTH|GLUT_ALPHA);
 
-	window_id = glutCreateWindow("display 3d");
+	window_id = glutCreateWindow("recognitor");
 	glutDisplayFunc(display_func);
 	glutReshapeFunc(resize_func);
 	glutKeyboardFunc(key_func);
