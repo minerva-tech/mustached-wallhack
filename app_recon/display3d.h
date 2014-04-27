@@ -7,11 +7,13 @@ using namespace std;
 
 struct Camera
 {
-	Mat intrin;
-	Mat dist;
+	Mat_<double> intrin;
+	Mat_<double> dist;
 	Point3d rvec;
 	Point3d tvec;
 	Mat image;
+	int image_width;
+	int image_height;
 };
 
 struct Chessboard

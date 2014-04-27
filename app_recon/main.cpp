@@ -35,6 +35,8 @@ int main(int argc, char **argv)
 				Camera cam;
 				Mat extrinsics;
 
+				f["image_width"] >> cam.image_width;
+				f["image_height"] >> cam.image_height;
 				f["camera_matrix"] >> cam.intrin;
 				f["distortion_coefficients"] >> cam.dist;
 				f["extrinsic_parameters"] >> extrinsics;

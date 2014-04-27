@@ -39,7 +39,7 @@ Display::Display(int width, int height)
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//glBlendFunc (GL_SRC_ALPHA_SATURATE, GL_ONE);
 	glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_DONT_CARE);
+	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 
 	glClearColor(0.90f, 0.90f, 0.90f, 0.0f);
 
@@ -166,6 +166,7 @@ void Display::display()
 
 void Display::draw_axis()
 {
+	const float len = 100;
 	float prev_width;
 	glGetFloatv(GL_LINE_WIDTH, &prev_width);
 	glLineWidth(3);
@@ -173,19 +174,19 @@ void Display::draw_axis()
 	glColor3f(0.90f, 0.1f, 0.1f);
 	glBegin(GL_LINES);
 	glVertex3f(0,0,0);
-	glVertex3f(1,0,0);
+	glVertex3f(len,0,0);
 	glEnd();
 
 	glColor3f(0.1f, 0.90f, 0.1f);
 	glBegin(GL_LINES);
 	glVertex3f(0,0,0);
-	glVertex3f(0,1,0);
+	glVertex3f(0,len,0);
 	glEnd();
 
 	glColor3f(0.1f, 0.1f, 0.90f);
 	glBegin(GL_LINES);
 	glVertex3f(0,0,0);
-	glVertex3f(0,0,1);
+	glVertex3f(0,0,len);
 	glEnd();
 
 	glLineWidth(prev_width);
@@ -193,18 +194,25 @@ void Display::draw_axis()
 
 void Display::draw_camera(const Camera &cam)
 {
-	glPushMatrix();
 	double a = norm(cam.rvec);
+
+	Point2d principal(cam.intrin(0,2), cam.intrin(1,2));
+	Point2d focal(cam.intrin(0,0), cam.intrin(1,1));
+
+	glPushMatrix();
 	glRotated(a/M_PI*180.0, cam.rvec.x, cam.rvec.y, cam.rvec.z);
 	glTranslated(cam.tvec.x, cam.tvec.y, cam.tvec.z);
 
+	Point2d p1(-principal.x/focal.x, -principal.y/focal.y);
+	Point2d p2((cam.image_width - principal.x)/focal.x, (cam.image_height - principal.y)/focal.y);
+
 	glColor3f(0,0,0);
 	glBegin(GL_LINE_STRIP);
-	glVertex3d(-1,-1,0);
-	glVertex3f(-1, 1,0);
-	glVertex3f(1,1,0);
-	glVertex3f(1,-1,0);
-	glVertex3d(-1,-1,0);
+	glVertex3d(p1.x, p1.y, 0);
+	glVertex3d(p1.x, p2.y, 0);
+	glVertex3d(p2.x, p2.y, 0);
+	glVertex3d(p2.x, p1.y, 0);
+	glVertex3d(p1.x, p1.y, 0);
 	glEnd();
 
 	glPopMatrix();
