@@ -7,14 +7,39 @@
 #define ZOOM_INCREMENT		0.1f
 #define ROTATE_INCREMENT	0.5f
 
+#define WHITE_CELL_COLOR	0.85f,0.85f,0.85f
+#define BLACK_CELL_COLOR	0.15f,0.15f,0.15f
+
 using namespace std;
 
 static map<int, Display *> windows;
 
+DisplayedCamera::DisplayedCamera(const Camera &cam)
+{
+	intrin = cam.intrin;
+	dist = cam.dist;
+	rvec = cam.rvec;
+	tvec = cam.tvec;
+	image = cam.image;
+	image_width = cam.image_width;
+	image_height = cam.image_height;
+
+	if(!image.empty()){
+		glGenTextures(1, &texid);
+		glBindTexture(GL_TEXTURE_2D, texid);
+		glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
+		glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST );
+		glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		gluBuild2DMipmaps(GL_TEXTURE_2D, 3, image.cols, image.rows, GL_BGR_EXT, GL_UNSIGNED_BYTE, image.data);
+	}
+	else texid = -1;
+}
+
 Display::Display(int width, int height)
 	:min_pos(-1,-1,-1),
 	max_pos(1,1,1),
-	shift(0,0,4)
+	shift(0,0,4),
+	is_simple_mode(false)
 {
 	int empty_argc = 0;
 	char *empty_argv = 0;
@@ -22,7 +47,7 @@ Display::Display(int width, int height)
 	glutInitWindowSize(width, height);
 	glutInitWindowPosition(100, 100);
 	glutInit(&empty_argc, &empty_argv);
-	glutInitDisplayMode(GLUT_RGBA|GLUT_DOUBLE|GLUT_DEPTH|GLUT_ALPHA);
+	glutInitDisplayMode(GLUT_RGBA|GLUT_DOUBLE|GLUT_DEPTH|GLUT_ALPHA|GLUT_MULTISAMPLE);
 
 	window_id = glutCreateWindow("recognitor");
 	glutDisplayFunc(display_func);
@@ -33,13 +58,7 @@ Display::Display(int width, int height)
 	
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
-	glEnable(GL_POINT_SMOOTH);
-	glEnable(GL_LINE_SMOOTH);
-	glEnable (GL_POLYGON_SMOOTH);
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glBlendFunc (GL_SRC_ALPHA_SATURATE, GL_ONE);
-	glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 
 	glClearColor(0.90f, 0.90f, 0.90f, 0.0f);
 
@@ -80,8 +99,10 @@ void Display::mouse_move(int x, int y)
 
 #pragma endregion
 
-void Display::add(const Camera &cam)
+void Display::add(const Camera &camera)
 {
+	DisplayedCamera cam = camera;
+
 	cams.push_back(cam);
 	update_range(cam.tvec);
 }
@@ -119,10 +140,10 @@ void Display::display()
 {
 	int window_width = glutGet(GLUT_WINDOW_WIDTH);
 	int window_height = glutGet(GLUT_WINDOW_HEIGHT);
-	double width = max_pos.x - min_pos.x;//MAX(max_pos.x - min_pos.x, max_pos.y - min_pos.y);
-	double height = max_pos.y - min_pos.y;//width;
-	double centerx = (min_pos.x + max_pos.x)/2;// + shift_x;
-	double centery = (min_pos.y + max_pos.y)/2;// + shift_y;
+	double width = max_pos.x - min_pos.x;
+	double height = max_pos.y - min_pos.y;
+	double centerx = (min_pos.x + max_pos.x)/2;
+	double centery = (min_pos.y + max_pos.y)/2;
 	double centerz = (min_pos.z + max_pos.z)/2;
 	double window_ar = double(window_width)/double(window_height);
 	double world_ar = width/height;
@@ -192,7 +213,7 @@ void Display::draw_axis()
 	glLineWidth(prev_width);
 }
 
-void Display::draw_camera(const Camera &cam)
+void Display::draw_camera(const DisplayedCamera &cam)
 {
 	double a = norm(cam.rvec);
 
@@ -206,6 +227,23 @@ void Display::draw_camera(const Camera &cam)
 	Point2d p1(-principal.x/focal.x, -principal.y/focal.y);
 	Point2d p2((cam.image_width - principal.x)/focal.x, (cam.image_height - principal.y)/focal.y);
 
+	if(!is_simple_mode){
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, cam.texid);
+		glBegin(GL_QUADS);
+		glTexCoord2d(0, 0);
+		glVertex3d(p1.x, p1.y, 0);
+		glTexCoord2d(0, 1);
+		glVertex3d(p1.x, p2.y, 0);
+		glTexCoord2d(1, 1);
+		glVertex3d(p2.x, p2.y, 0);
+		glTexCoord2d(1, 0);
+		glVertex3d(p2.x, p1.y, 0);		
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+	}
+
+	glLineWidth(2);
 	glColor3f(0,0,0);
 	glBegin(GL_LINE_STRIP);
 	glVertex3d(p1.x, p1.y, 0);
@@ -214,6 +252,11 @@ void Display::draw_camera(const Camera &cam)
 	glVertex3d(p2.x, p1.y, 0);
 	glVertex3d(p1.x, p1.y, 0);
 	glEnd();
+
+	/*glBegin(GL_LINES);
+	glVertex3d(principal.x/focal.x, principal.y/focal.y, cam.image_width/focal.x*0.1);
+	glVertex3d(principal.x/focal.x, principal.y/focal.y, -cam.image_width/focal.x*25);
+	glEnd();*/
 
 	glPopMatrix();
 }
@@ -227,8 +270,8 @@ void Display::draw_chessboard(const Chessboard &cb)
 	glBegin(GL_QUADS);
 
 	for(int x = 0; x < cb.width + 1; ++x)for(int y = 0; y < cb.height + 1; ++y){
-		if((x + y) & 1)glColor3f(1,1,1);
-		else glColor3f(0,0,0);
+		if((x + y) & 1)glColor3f(WHITE_CELL_COLOR);
+		else glColor3f(BLACK_CELL_COLOR);
 		glVertex3d(x*cb.cell_size, y*cb.cell_size, 0);
 		glVertex3d((x+1)*cb.cell_size, y*cb.cell_size, 0);
 		glVertex3d((x+1)*cb.cell_size, (y+1)*cb.cell_size, 0);

@@ -1,19 +1,18 @@
 #pragma once
+#include <GL/glut.h>
 #include <opencv2/core/core.hpp>
 #include <list>
+#include "camera.h"
 
 using namespace cv;
 using namespace std;
 
-struct Camera
+struct DisplayedCamera: public Camera
 {
-	Mat_<double> intrin;
-	Mat_<double> dist;
-	Point3d rvec;
-	Point3d tvec;
-	Mat image;
-	int image_width;
-	int image_height;
+	DisplayedCamera();
+	DisplayedCamera(const Camera &cam);
+
+	GLuint texid;
 };
 
 struct Chessboard
@@ -47,7 +46,7 @@ private:
 
 	static void draw_axis();
 	static void draw_object(const vector<Point3d> &obj);
-	static void draw_camera(const Camera &cam);
+	void draw_camera(const DisplayedCamera &cam);
 	static void draw_chessboard(const Chessboard &cb);
 
 	void display();
@@ -64,7 +63,9 @@ private:
 	Point2i drag_start;
 	Point3d rot_start;
 
-	list<Camera> cams;
+	bool is_simple_mode;
+
+	list<DisplayedCamera> cams;
 	list<vector<Point3d>> objs;
 	Chessboard chessboard;
 	
