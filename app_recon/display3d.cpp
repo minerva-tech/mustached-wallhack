@@ -201,7 +201,7 @@ void Display::draw_camera(const Camera &cam)
 
 	glPushMatrix();
 	glRotated(a/M_PI*180.0, cam.rvec.x, cam.rvec.y, cam.rvec.z);
-	glTranslated(cam.tvec.x, cam.tvec.y, cam.tvec.z);
+	glTranslated(-cam.tvec.x, -cam.tvec.y, cam.tvec.z);
 
 	Point2d p1(-principal.x/focal.x, -principal.y/focal.y);
 	Point2d p2((cam.image_width - principal.x)/focal.x, (cam.image_height - principal.y)/focal.y);
