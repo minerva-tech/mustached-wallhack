@@ -17,6 +17,12 @@
 #pragma comment(lib, "opencv_calib3d247d.lib")
 #pragma comment(lib, "opencv_imgproc247d.lib")
 #else
+#pragma comment(lib, "opencv_core247.lib")
+#pragma comment(lib, "opencv_highgui247.lib")
+#pragma comment(lib, "opencv_features2d247.lib")
+#pragma comment(lib, "opencv_nonfree247.lib")
+#pragma comment(lib, "opencv_calib3d247.lib")
+#pragma comment(lib, "opencv_imgproc247.lib")
 #endif
 
 using namespace cv;
