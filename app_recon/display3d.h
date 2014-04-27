@@ -20,6 +20,8 @@ struct Chessboard
 {
 	Chessboard():cell_size(0), width(0), height(0){}
 
+	bool valid(){ return cell_size > 0; }
+
 	double cell_size;
 	int width;
 	int height;

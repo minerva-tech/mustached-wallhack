@@ -181,14 +181,14 @@ static bool runCalibration( vector<vector<Point2f> > imagePoints,
 }
 
 
-static void saveCameraParams( const string& filename,
+static void saveCameraParams( const string& filename, const vector<int> &frameno,
                        Size imageSize, Size boardSize,
                        float squareSize, float aspectRatio, int flags,
                        const Mat& cameraMatrix, const Mat& distCoeffs,
                        const vector<Mat>& rvecs, const vector<Mat>& tvecs,
                        const vector<float>& reprojErrs,
                        const vector<vector<Point2f> >& imagePoints,
-                       double totalAvgErr )
+                       double totalAvgErr)
 {
     FileStorage fs( filename, FileStorage::WRITE );
 
@@ -249,6 +249,12 @@ static void saveCameraParams( const string& filename,
         fs << "extrinsic_parameters" << bigmat;
     }
 
+    if(!frameno.empty()){
+	    Mat_<int> framenums(frameno.size(), 1);
+	    for(int i = 0; i < frameno.size(); ++i)framenums(i, 0) = frameno[i];
+	    fs << "video_frame_numbers" << framenums;
+    }
+
     if( !imagePoints.empty() )
     {
         Mat imagePtMat((int)imagePoints.size(), (int)imagePoints[0].size(), CV_32FC2);
@@ -278,11 +284,11 @@ static bool readStringList( const string& filename, vector<string>& l )
 }
 
 
-static bool runAndSave(const string& outputFilename,
+static bool runAndSave(const string& outputFilename, const vector<int> &frameno,
                 const vector<vector<Point2f> >& imagePoints,
                 Size imageSize, Size boardSize, Pattern patternType, float squareSize,
                 float aspectRatio, int flags, Mat& cameraMatrix,
-                Mat& distCoeffs, bool writeExtrinsics, bool writePoints )
+                Mat& distCoeffs, bool writeExtrinsics, bool writePoints)
 {
     vector<Mat> rvecs, tvecs;
     vector<float> reprojErrs;
@@ -296,14 +302,14 @@ static bool runAndSave(const string& outputFilename,
            totalAvgErr);
 
     if( ok )
-        saveCameraParams( outputFilename, imageSize,
+        saveCameraParams( outputFilename, frameno, imageSize,
                          boardSize, squareSize, aspectRatio,
                          flags, cameraMatrix, distCoeffs,
                          writeExtrinsics ? rvecs : vector<Mat>(),
                          writeExtrinsics ? tvecs : vector<Mat>(),
                          writeExtrinsics ? reprojErrs : vector<float>(),
                          writePoints ? imagePoints : vector<vector<Point2f> >(),
-                         totalAvgErr );
+                         totalAvgErr);
     return ok;
 }
 
@@ -315,6 +321,7 @@ int main( int argc, char** argv )
     Mat cameraMatrix, distCoeffs;
     const char* outputFilename = "out_camera_data.yml";
     const char* inputFilename = 0;
+    string imageFilenamePattern;
 
     int i, nframes = 10;
     bool writeExtrinsics = false, writePoints = false;
@@ -329,6 +336,7 @@ int main( int argc, char** argv )
     int mode = DETECTION;
     int cameraId = 0;
     vector<vector<Point2f> > imagePoints;
+    vector<int> framenums;
     vector<string> imageList;
     Pattern pattern = CHESSBOARD;
 
@@ -464,11 +472,12 @@ int main( int argc, char** argv )
 
         if(!view.data)
         {
-            if( imagePoints.size() > 0 )
-                runAndSave(outputFilename, imagePoints, imageSize,
+            if( imagePoints.size() > 0 ){
+                runAndSave(outputFilename, framenums, imagePoints, imageSize,
                            boardSize, pattern, squareSize, aspectRatio,
                            flags, cameraMatrix, distCoeffs,
                            writeExtrinsics, writePoints);
+	    }
             break;
         }
 
@@ -505,6 +514,7 @@ int main( int argc, char** argv )
            (!capture.isOpened() || clock() - prevTimestamp > delay*1e-3*CLOCKS_PER_SEC) )
         {
             imagePoints.push_back(pointbuf);
+	    framenums.push_back(i);
             prevTimestamp = clock();
             blink = capture.isOpened();
         }
@@ -555,7 +565,7 @@ int main( int argc, char** argv )
 
         if( mode == CAPTURING && imagePoints.size() >= (unsigned)nframes )
         {
-            if( runAndSave(outputFilename, imagePoints, imageSize,
+            if( runAndSave(outputFilename, framenums, imagePoints, imageSize,
                        boardSize, pattern, squareSize, aspectRatio,
                        flags, cameraMatrix, distCoeffs,
                        writeExtrinsics, writePoints))

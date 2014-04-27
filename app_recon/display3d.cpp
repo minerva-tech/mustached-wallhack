@@ -157,7 +157,7 @@ void Display::display()
 
 	for(auto o = objs.begin(); o != objs.end(); ++o)draw_object(*o);
 
-	if(chessboard.cell_size > 0)
+	if(chessboard.valid())
 		draw_chessboard(chessboard);
 
 	glFlush();
