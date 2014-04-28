@@ -2,16 +2,19 @@
 #include <GL/glut.h>
 #include <opencv2/core/core.hpp>
 #include <list>
-#include "camera.h"
+#include "../librecon/camera.h"
 
 using namespace cv;
 using namespace std;
 
-struct DisplayedCamera: public Camera
+class DisplayedCamera: public Camera
 {
+public:
 	DisplayedCamera();
 	DisplayedCamera(const Camera &cam);
 
+	void draw(bool is_simple) const;
+private:
 	GLuint texid;
 };
 
@@ -46,7 +49,7 @@ private:
 
 	static void draw_axis();
 	static void draw_object(const vector<Point3d> &obj);
-	void draw_camera(const DisplayedCamera &cam);
+	//void draw_camera(const DisplayedCamera &cam);
 	static void draw_chessboard(const Chessboard &cb);
 
 	void display();

@@ -35,6 +35,54 @@ DisplayedCamera::DisplayedCamera(const Camera &cam)
 	else texid = -1;
 }
 
+void DisplayedCamera::draw(bool is_simple_mode) const
+{
+	double a = norm(rvec);
+
+	Point2d principal(intrin(0,2), intrin(1,2));
+	Point2d focal(intrin(0,0), intrin(1,1));
+
+	glPushMatrix();
+	glRotated(a/M_PI*180.0, rvec.x, rvec.y, rvec.z);
+	glTranslated(-tvec.x, -tvec.y, tvec.z);
+
+	Point2d p1(-principal.x/focal.x, -principal.y/focal.y);
+	Point2d p2((image_width - principal.x)/focal.x, (image_height - principal.y)/focal.y);
+
+	if(!is_simple_mode && glIsTexture(texid)){
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, texid);
+		glBegin(GL_QUADS);
+		glTexCoord2d(0, 0);
+		glVertex3d(p1.x, p1.y, 0);
+		glTexCoord2d(0, 1);
+		glVertex3d(p1.x, p2.y, 0);
+		glTexCoord2d(1, 1);
+		glVertex3d(p2.x, p2.y, 0);
+		glTexCoord2d(1, 0);
+		glVertex3d(p2.x, p1.y, 0);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+	}
+
+	glLineWidth(2);
+	glColor3f(0,0,0);
+	glBegin(GL_LINE_STRIP);
+	glVertex3d(p1.x, p1.y, 0);
+	glVertex3d(p1.x, p2.y, 0);
+	glVertex3d(p2.x, p2.y, 0);
+	glVertex3d(p2.x, p1.y, 0);
+	glVertex3d(p1.x, p1.y, 0);
+	glEnd();
+
+	/*glBegin(GL_LINES);
+	glVertex3d(principal.x/focal.x, principal.y/focal.y, cam.image_width/focal.x*0.1);
+	glVertex3d(principal.x/focal.x, principal.y/focal.y, -cam.image_width/focal.x*25);
+	glEnd();*/
+
+	glPopMatrix();
+}
+
 Display::Display(int width, int height)
 	:min_pos(-1,-1,-1),
 	max_pos(1,1,1),
@@ -174,7 +222,7 @@ void Display::display()
 
 	draw_axis();
 
-	for(auto c = cams.begin(); c != cams.end(); ++c)draw_camera(*c);
+	for(auto c = cams.begin(); c != cams.end(); ++c)c->draw(is_simple_mode);
 
 	for(auto o = objs.begin(); o != objs.end(); ++o)draw_object(*o);
 
@@ -211,54 +259,6 @@ void Display::draw_axis()
 	glEnd();
 
 	glLineWidth(prev_width);
-}
-
-void Display::draw_camera(const DisplayedCamera &cam)
-{
-	double a = norm(cam.rvec);
-
-	Point2d principal(cam.intrin(0,2), cam.intrin(1,2));
-	Point2d focal(cam.intrin(0,0), cam.intrin(1,1));
-
-	glPushMatrix();
-	glRotated(a/M_PI*180.0, cam.rvec.x, cam.rvec.y, cam.rvec.z);
-	glTranslated(-cam.tvec.x, -cam.tvec.y, cam.tvec.z);
-
-	Point2d p1(-principal.x/focal.x, -principal.y/focal.y);
-	Point2d p2((cam.image_width - principal.x)/focal.x, (cam.image_height - principal.y)/focal.y);
-
-	if(!is_simple_mode){
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, cam.texid);
-		glBegin(GL_QUADS);
-		glTexCoord2d(0, 0);
-		glVertex3d(p1.x, p1.y, 0);
-		glTexCoord2d(0, 1);
-		glVertex3d(p1.x, p2.y, 0);
-		glTexCoord2d(1, 1);
-		glVertex3d(p2.x, p2.y, 0);
-		glTexCoord2d(1, 0);
-		glVertex3d(p2.x, p1.y, 0);		
-		glEnd();
-		glDisable(GL_TEXTURE_2D);
-	}
-
-	glLineWidth(2);
-	glColor3f(0,0,0);
-	glBegin(GL_LINE_STRIP);
-	glVertex3d(p1.x, p1.y, 0);
-	glVertex3d(p1.x, p2.y, 0);
-	glVertex3d(p2.x, p2.y, 0);
-	glVertex3d(p2.x, p1.y, 0);
-	glVertex3d(p1.x, p1.y, 0);
-	glEnd();
-
-	/*glBegin(GL_LINES);
-	glVertex3d(principal.x/focal.x, principal.y/focal.y, cam.image_width/focal.x*0.1);
-	glVertex3d(principal.x/focal.x, principal.y/focal.y, -cam.image_width/focal.x*25);
-	glEnd();*/
-
-	glPopMatrix();
 }
 
 void Display::draw_object(const vector<Point3d> &obj)

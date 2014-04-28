@@ -6,6 +6,5 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="display3d.h" />
-    <ClInclude Include="camera.h" />
   </ItemGroup>
 </Project>
