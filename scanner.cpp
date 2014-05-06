@@ -6,12 +6,12 @@
 #include "exception.h"
 
 #ifdef _DEBUG
-#pragma comment(lib, "opencv_core247d.lib")
-#pragma comment(lib, "opencv_highgui247d.lib")
-#pragma comment(lib, "opencv_flann247d.lib")
-#pragma comment(lib, "opencv_imgproc247d.lib")
-#pragma comment(lib, "opencv_features2d247d.lib")
-#pragma comment(lib, "opencv_calib3d247d.lib")
+#pragma comment(lib, "opencv_core249d.lib")
+#pragma comment(lib, "opencv_highgui249d.lib")
+#pragma comment(lib, "opencv_flann249d.lib")
+#pragma comment(lib, "opencv_imgproc249d.lib")
+#pragma comment(lib, "opencv_features2d249d.lib")
+#pragma comment(lib, "opencv_calib3d249d.lib")
 #pragma comment(lib, "zlibd.lib")
 #pragma comment(lib, "libtiffd.lib")
 #pragma comment(lib, "libjpegd.lib")

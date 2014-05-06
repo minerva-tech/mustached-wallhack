@@ -3,6 +3,7 @@
 
 #include <string>
 #include <fstream>
+#include <memory>
 
 #include <boost/array.hpp>
 #include <boost/cstdint.hpp>
@@ -10,7 +11,7 @@
 
 #include <opencv2/opencv.hpp>
 
-#include <Eigen/Dense>
+//#include <Eigen/Dense>
 
 #define foreach_         BOOST_FOREACH
 #define foreach_r_       BOOST_REVERSE_FOREACH
