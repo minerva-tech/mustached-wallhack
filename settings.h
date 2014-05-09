@@ -14,7 +14,7 @@ struct Settings {
 	int		n_begin_frame;
 	int		n_end_frame;
 
-	std::string s_video_fname;
+	std::string s_images_fmask;
     std::string s_recon_fname;
 	std::string s_mesh_fname;
 	std::string s_trajectory_fname;

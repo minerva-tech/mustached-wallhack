@@ -18,12 +18,22 @@
 #pragma comment(lib, "libpngd.lib")
 #pragma comment(lib, "libjasperd.lib")
 #pragma comment(lib, "IlmImfd.lib")
-#pragma comment(lib, "vfw32.lib")
 #else
-#pragma comment(lib, "opencv_core247.lib")
-#pragma comment(lib, "opencv_highgui247.lib")
-#pragma comment(lib, "opencv_calib3d247.lib")
+#pragma comment(lib, "opencv_core249.lib")
+#pragma comment(lib, "opencv_highgui249.lib")
+#pragma comment(lib, "opencv_calib3d249.lib")
+#pragma comment(lib, "opencv_flann249.lib")
+#pragma comment(lib, "opencv_imgproc249.lib")
+#pragma comment(lib, "opencv_features2d249.lib")
+#pragma comment(lib, "zlib.lib")
+#pragma comment(lib, "libtiff.lib")
+#pragma comment(lib, "libjpeg.lib")
+#pragma comment(lib, "libpng.lib")
+#pragma comment(lib, "libjasper.lib")
+#pragma comment(lib, "IlmImf.lib")
 #endif
+
+#pragma comment(lib, "vfw32.lib")
 
 static std::vector<std::vector<cv::Point3f> > fill_obj_points(int w, int h)
 {
@@ -62,9 +72,11 @@ void IScanner::Impl::process()
 {
 	open();
 
+	m_settings.n_end_frame = std::min(m_settings.n_end_frame, m_frm_cnt);
+
 	cv::Mat pos = cv::Mat::zeros(3, 1, CV_64F);
 
-    cv::Mat img;
+//    cv::Mat img;
 
     std::vector <cv::Point2f> corners;
 
@@ -72,34 +84,41 @@ void IScanner::Impl::process()
 
     const CvSize pat_size = cvSize(m_settings.n_chessboard_cols-1, m_settings.n_chessboard_rows-1);
 
-    int fr_cnt = 0;
+//    int fr_cnt = 0;
 
-    while (m_capture.read(img) && fr_cnt < m_settings.n_end_frame) {
-	    const bool found_fast = findChessboardCorners(img, pat_size, corners, cv::CALIB_CB_FAST_CHECK);
+//    while (m_capture.read(img) && fr_cnt < m_settings.n_end_frame) {
+	for (int fr_cnt = 0; fr_cnt < m_settings.n_end_frame; fr_cnt++) {
+	    const bool found_fast = findChessboardCorners(m_images[fr_cnt], pat_size, corners, cv::CALIB_CB_FAST_CHECK);
 
         if (found_fast) {
-            const bool found = findChessboardCorners(img, pat_size, corners);
+            const bool found = findChessboardCorners(m_images[fr_cnt], pat_size, corners);
 
             if (found) {
-                drawChessboardCorners(img, pat_size, corners, found);
+                drawChessboardCorners(m_images[fr_cnt], pat_size, corners, found);
 
-                m_recon.write(img);
+				cv::imwrite(std::string("rec") + boost::lexical_cast<std::string>(fr_cnt)+".jpg", m_images[fr_cnt]);
+//				m_recon.write(m_images[fr_cnt]);
 
                 m_frames.push_back(FrameData());
 
                 m_frames.back().corners.push_back(corners);
                 m_frames.back().idx = fr_cnt;
 
-                std::cout << "frame #" << fr_cnt << " chessboard found." << std::endl;
+                std::cout << "frame #" << fr_cnt << " chessboard was found." << std::endl;
             } else {
-                std::cout << "frame #" << fr_cnt << " chessboard NOT found." << std::endl;
+				std::cout << "frame #" << fr_cnt << " chessboard WASN'T found (slow)." << std::endl;
             }
         } else {
-            std::cout << "frame #" << fr_cnt << " chessboard NOT found." << std::endl;
+            std::cout << "frame #" << fr_cnt << " chessboard WASN'T found (fast)." << std::endl;
         }
 
-        fr_cnt++;
+//        fr_cnt++;
     }
+
+	if (m_frames.empty()) {
+		close();
+		return;
+	}
 
     cv::Mat camera[2];
     std::vector<float> dist[2];
@@ -128,7 +147,7 @@ void IScanner::Impl::process()
 
                 double angle = cv::norm(rot_);
 
-                if (angle < ANGLE_THRES) {
+                if (1 || angle < ANGLE_THRES) {
                     std::cout << "Angle: " << angle << std::endl;
 
                     std::cout << "Trans: " << rot*trans << std::endl;
@@ -165,24 +184,35 @@ void IScanner::Impl::process()
     close();
 }
 
+static int read_images(std::vector<cv::Mat>& images, const std::string& fmask)
+{
+	std::vector<boost::filesystem::path> fnames;
+	std::vector<std::string> fimages;
+
+	std::copy(boost::filesystem::directory_iterator("."), boost::filesystem::directory_iterator(), std::back_inserter(fnames));
+
+	boost::regex e(fmask);
+
+	foreach_(boost::filesystem::path& fname, fnames)
+		if (boost::regex_search(fname.generic_string(), e))
+			fimages.push_back(fname.generic_string()); // TODO: There is simpler way, i believe.
+
+	std::sort(fimages.begin(), fimages.end());
+
+	foreach_(const std::string& fimage, fimages)
+		images.push_back(cv::imread(fimage));
+
+	return images.size();
+}
+
 void IScanner::Impl::open()
 {
-	m_capture.open(m_settings.s_video_fname);
-
-	if (!m_capture.isOpened())
-		throw Exception("Video cannot be opened. Check if you have opencv_ffmpeg247.dll");
+	m_frm_cnt = read_images(m_images, m_settings.s_images_fmask);
 
 	m_mesh_fstr.open(m_settings.s_mesh_fname);
 	m_trajectory_fstr.open(m_settings.s_trajectory_fname);
 
-	m_frm_cnt = static_cast<int>(m_capture.get(CV_CAP_PROP_FRAME_COUNT));
-    
-    const int w = static_cast<int>(m_capture.get(CV_CAP_PROP_FRAME_WIDTH));
-    const int h = static_cast<int>(m_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
-
-    std::cout << "resolution: " << w << "x" << h << std::endl; 
-
-    const CvSize fr_size = cvSize(w, h);
+    const CvSize fr_size = cvSize(m_images[0].rows, m_images[0].cols);
 
     m_recon.open(m_settings.s_recon_fname, CV_FOURCC('Y','U','Y','2'), 30, fr_size, true);
 
@@ -196,70 +226,6 @@ void IScanner::Impl::close()
     m_trajectory_fstr.close();
 	m_mesh_fstr.close();
 }
-
-/*
-bool IScanner::Impl::calibrate_camera(Camera& cam)
-{
-	std::vector<std::vector <cv::Point2f> > corners[2];
-	std::vector <cv::Point2f>* corner[2];
-
-	for (int i=0; i<2; i++) {
-		corners[i].push_back(std::vector <cv::Point2f>());
-
-		corner[i] = &corners[i].back();
-
-		// bug in C++ wrapper around findChessboardCornders? anyway, todo: check it. But without this resize find_movement method crashes on exit.
-		corner[i]->resize((m_settings.n_chessboard_cols-1) * (m_settings.n_chessboard_rows-1));
-	}
-
-	const bool found_fast_0 = findChessboardCorners(frame(0), cvSize(m_settings.n_chessboard_cols-1, m_settings.n_chessboard_rows-1), 
-		*corner[0], cv::CALIB_CB_FAST_CHECK);
-	const bool found_fast_1 = findChessboardCorners(frame(1), cvSize(m_settings.n_chessboard_cols-1, m_settings.n_chessboard_rows-1), 
-		*corner[1], cv::CALIB_CB_FAST_CHECK);
-
-	if (!found_fast_0 && found_fast_1) {
-		freeze(true);
-		return false;
-	}
-
-	if (!found_fast_0 || !found_fast_1)
-		return false;
-
-	freeze(false);
-
-	const bool found_0 = findChessboardCorners(frame(0), cvSize(m_settings.n_chessboard_cols-1, m_settings.n_chessboard_rows-1), *corner[0]);
-	const bool found_1 = findChessboardCorners(frame(1), cvSize(m_settings.n_chessboard_cols-1, m_settings.n_chessboard_rows-1), *corner[1]);
-
-	if (!found_0 || !found_1)
-		return false;
-
-	const int len = (m_settings.n_chessboard_cols-1) * (m_settings.n_chessboard_rows-1);
-
-//	cv::calibrateCamera(g_obj_points, corners, cvSize(1, len), cam.camera, cam.dist, cam.rot, cam.trans);
-
-	cam.dist[0].resize(9);
-	cam.dist[1].resize(9);
-
-	cv::stereoCalibrate(g_obj_points, corners[1], corners[0], cam.camera[1], cam.dist[1], cam.camera[0], cam.dist[0], 
-		cvSize(1, len), cam.rot, cam.trans, cam.E, cam.F, 
-		cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 1e-6), CV_CALIB_SAME_FOCAL_LENGTH | CV_CALIB_ZERO_TANGENT_DIST);
-
-//	cam.rot = cv::Mat::ones(3, 3, CV_64F);
-//	cam.trans = cv::Mat::ones(3, 1, CV_64F);
-
-	return true;
-}
-
-void IScanner::Impl::write_aff_mat(const AffMatrix& mat) const
-{
-	std::cout << mat.mat << std::endl;
-}
-
-void IScanner::Impl::write_points(const Points& pts)
-{
-
-}
-*/
 
 static void draw_cube(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat& rot, int n)
 {
@@ -291,36 +257,3 @@ void IScanner::Impl::draw_camera(const cv::Mat& trans, const cv::Mat& rot, int f
 {
 	draw_cube(m_trajectory_fstr, trans, rot, fr_idx);
 }
-
-/*
-cv::Mat IScanner::Impl::write_camera_pos(const Camera& cam, const cv::Mat& cur_pos)
-{
-//	std::cout << cam.rot << std::endl;
-	std::cout << cam.trans << std::endl;
-	std::cout << cam.rot << std::endl;
-
-//	const double theta = cv::norm(cam.rot[0]);
-//	cam.rot[0] /= theta;
-
-//	and so on
-
-//	cv::Mat rot;
-
-//	cv::Rodrigues(cam.rot, rot);
-
-//	draw_cube(m_trajectory_fstr, cam.rot*cam.trans, cam.rot);
-
-	m_sum_rot *= cam.rot;
-	const auto new_pos = cur_pos + m_sum_rot*cam.trans;
-//	const auto new_pos = cur_pos + cam.trans;
-//	const auto new_pos = cur_pos + cam.rot*cam.trans;
-
-	const auto delta = m_sum_rot*cam.trans;
-
-	std::cout << "Delta: " << delta << std::endl;
-
-	draw_cube(m_trajectory_fstr, new_pos, cam.rot, m_frm_processed);
-
-	return new_pos;
-}
-*/

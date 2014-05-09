@@ -11,7 +11,9 @@ private:
     struct FrameData;
     struct Diff;
 
-	cv::VideoCapture m_capture;
+	std::vector<cv::Mat> m_images;
+
+//	cv::VideoCapture m_capture;
     cv::VideoWriter  m_recon;
 
 	void open();
@@ -21,7 +23,7 @@ private:
 
 	struct Camera;
 
-    const Settings m_settings;
+    Settings m_settings;
 
     const std::vector<std::vector<cv::Point3f> > g_obj_points;
 

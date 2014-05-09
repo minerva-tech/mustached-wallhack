@@ -8,6 +8,9 @@
 #include <boost/array.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/foreach.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/regex.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <opencv2/opencv.hpp>
 
