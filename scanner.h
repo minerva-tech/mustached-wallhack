@@ -51,6 +51,8 @@ struct IScanner::Impl::FrameData
 {
     uint32_t idx;
 
+	cv::Mat img;
+
     std::vector<std::vector<cv::Point2f> > corners;
 
     std::map<uint32_t, Diff> diff;
