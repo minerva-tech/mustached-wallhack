@@ -1,7 +1,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <map>
-#include "gl/glut.h"
+#include "GL/glut.h"
 #include "display3d.h"
 
 #define ZOOM_INCREMENT		0.1f

@@ -16,9 +16,9 @@ public:
 	void clear();
 	void add(const Camera &camera, const vector<Mat> &images);
 	
-	vector<vector<Point3d>> get_points() const;
+    vector<vector<Point3d> > get_points() const;
 	vector<Camera> get_cameras() const;
 private:
-	vector<vector<Point3d>> points;
+    vector<vector<Point3d> > points;
 	vector<Camera> cameras;
 };
