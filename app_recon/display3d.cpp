@@ -84,10 +84,10 @@ void DisplayedCamera::draw(bool is_simple_mode) const
 }
 
 Display::Display(int width, int height)
-	:min_pos(-1,-1,-1),
+    :is_simple_mode(false),
+    min_pos(-1,-1,-1),
 	max_pos(1,1,1),
-	shift(0,0,4),
-	is_simple_mode(false)
+    shift(0,0,4)
 {
 	int empty_argc = 0;
 	char *empty_argv = 0;
@@ -261,7 +261,7 @@ void Display::draw_axis()
 	glLineWidth(prev_width);
 }
 
-void Display::draw_object(const vector<Point3d> &obj)
+void Display::draw_object(const vector<Point3d> &)
 {
 }
 
@@ -281,11 +281,11 @@ void Display::draw_chessboard(const Chessboard &cb)
 	glEnd();
 }
 
-void Display::resize(int width, int height)
+void Display::resize(int, int)
 {
 }
 
-void Display::key(unsigned char key, const Point2i &pos)
+void Display::key(unsigned char key, const Point2i &)
 {
 	switch(key){
 	case 27:
