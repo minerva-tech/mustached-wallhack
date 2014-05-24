@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <string>
 #include <stdarg.h>
+#include <iostream>
 #include "display3d.h"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/features2d/features2d.hpp"
+#include "opencv2/nonfree/features2d.hpp"
+#include "opencv2/calib3d/calib3d.hpp"
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -79,19 +82,80 @@ string sprintf(const char *format, ...)
     return string(buf);
 }
 
+vector<KeyPoint> reorder(const vector<KeyPoint> &keypoints, const vector<DMatch> &matches)
+{
+    vector<KeyPoint> filtered(matches.size());
+
+    for(size_t i = 0; i < matches.size(); ++i){
+        filtered[i] = keypoints[matches[i].trainIdx];
+    }
+    return filtered;
+}
+
+template <class T>
+vector<T> filter(const vector<T> &keypoints, const Mat &mask)
+{
+    vector<T> filtered;
+    for(size_t i = 0; i < keypoints.size(); ++i){
+        if(mask.at<bool>(i))filtered.push_back(keypoints[i]);
+    }
+    return filtered;
+}
+
+//template<class FeatureDetector, class DescMatcher>
 int recon_stereo(const Mat *images, const Camera &cam)
 {
-    BRISK brisk;
+    SurfFeatureDetector detector(400);
     vector<KeyPoint> keypoints[2];
     Mat desc[2];
 
     for(int i = 0; i < 2; ++i){
-        brisk(images[i], Mat(), keypoints[i], desc[i]);
-        Mat kp_image;
-        drawKeypoints(images[i], keypoints[i], kp_image, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-        //imshow(sprintf("keypoints %d", i), kp_image);
-        imwrite(sprintf("/tmp/keypoints%d.jpg", i), kp_image);
+        detector(images[i], Mat(), keypoints[i], desc[i]);
+        printf("find %d keypoints\n", (int)keypoints[i].size());
+        Mat im_keypoints;
+        drawKeypoints(images[i], keypoints[i], im_keypoints, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+        imshow(sprintf("keypoints %d", i), im_keypoints);
+        imwrite(sprintf("/tmp/keypoints%d.jpg", i), im_keypoints);
     }
+
+    FlannBasedMatcher matcher;
+    //BFMatcher matcher;
+    vector<DMatch> matches;
+    matcher.match(desc[0], desc[1], matches);
+
+    int n = keypoints[0].size();
+
+    Mat points[2] = {Mat(n, 1, CV_32FC2), Mat(n, 1, CV_32FC2)};
+    for(int j = 0; j < n; ++j){
+        points[0].at<Point2f>(j, 0) = keypoints[0][j].pt;
+        points[1].at<Point2f>(j, 0) = keypoints[1][matches[j].trainIdx].pt;
+    }
+
+    Mat mask;
+    Mat homo = findHomography(points[0], points[1], mask, CV_RANSAC);
+    cout << homo << endl;
+
+    Mat im_matches;
+    drawMatches(images[0], keypoints[0], images[1], keypoints[1], matches, im_matches, Scalar::all(-1), Scalar::all(-1), mask);
+    imshow("matches", im_matches);
+    imwrite(sprintf("/tmp/matches.jpg"), im_matches);
+
+/*  Mat points[2] = {Mat(n, 2, CV_32FC1), Mat(n, 2, CV_32FC1)};
+
+    for(int i = 0; i < 2; ++i)for(int j = 0; j < n; ++j){
+        points[i].at<float>(j, 0) = keypoints[i][j].pt.x;
+        points[i].at<float>(j, 1) = keypoints[i][j].pt.y;
+    }
+
+    Mat mask;
+    Mat fund = findFundamentalMat(points[0], points[1], mask);
+    cout << fund << endl;
+
+    Mat corr_points[2];
+    int rows = n*2;
+    correctMatches(fund, points[0].reshape(0, 1, &rows), points[1].reshape(0, 1, &rows), corr_points[0], corr_points[1]);
+*/
+    waitKey();
 
     return 0;
 }
