@@ -7,6 +7,8 @@
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/nonfree/features2d.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/video/tracking.hpp"
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -102,27 +104,8 @@ vector<T> filter(const vector<T> &keypoints, const Mat &mask)
     return filtered;
 }
 
-//template<class FeatureDetector, class DescMatcher>
-int recon_stereo(const Mat *images, const Camera &cam)
+Mat find_homography(const vector<KeyPoint> *keypoints, const vector<DMatch> &matches, Mat &mask)
 {
-    SurfFeatureDetector detector(400);
-    vector<KeyPoint> keypoints[2];
-    Mat desc[2];
-
-    for(int i = 0; i < 2; ++i){
-        detector(images[i], Mat(), keypoints[i], desc[i]);
-        printf("find %d keypoints\n", (int)keypoints[i].size());
-        Mat im_keypoints;
-        drawKeypoints(images[i], keypoints[i], im_keypoints, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-        imshow(sprintf("keypoints %d", i), im_keypoints);
-        imwrite(sprintf("/tmp/keypoints%d.jpg", i), im_keypoints);
-    }
-
-    FlannBasedMatcher matcher;
-    //BFMatcher matcher;
-    vector<DMatch> matches;
-    matcher.match(desc[0], desc[1], matches);
-
     int n = keypoints[0].size();
 
     Mat points[2] = {Mat(n, 1, CV_32FC2), Mat(n, 1, CV_32FC2)};
@@ -131,45 +114,143 @@ int recon_stereo(const Mat *images, const Camera &cam)
         points[1].at<Point2f>(j, 0) = keypoints[1][matches[j].trainIdx].pt;
     }
 
-    Mat mask;
     Mat homo = findHomography(points[0], points[1], mask, CV_RANSAC);
-    cout << homo << endl;
+    cout << "homography" << endl << homo << endl;
+
+    return homo;
+}
+
+void keypoints_optical_flow(const Mat *images, vector<KeyPoint> *keypoints, vector<DMatch> &matches)
+{
+    Mat err;
+    SurfFeatureDetector detector;
+    Mat desc[2];
+
+    detector(images[0], Mat(), keypoints[0], desc[0]);
+
+    keypoints[1].resize(keypoints[0].size());
+    matches.resize(keypoints[0].size());
+
+    vector<Point2f> points[2];
+    points[0].resize(keypoints[0].size());
+    for(size_t i = 0; i < keypoints[0].size(); ++i){
+        points[0][i] = keypoints[0][i].pt;
+    }
+
+    vector<Mat> pyramids[2];
+    for(int i = 0; i < 2; ++i)
+        buildOpticalFlowPyramid(images[i], pyramids[i], Size(21, 21), 4);
+
+    Mat mask;
+    calcOpticalFlowPyrLK(pyramids[0], pyramids[1], points[0], points[1], mask, err);
+
+    for(size_t i = 0; i < keypoints[0].size(); ++i){
+        keypoints[1][i].pt = points[1][i];
+        matches[i] = DMatch(i, i, 0);
+    }
+
+    for(int i = 0; i < 2; ++i){
+        Mat im_keypoints;
+        drawKeypoints(images[i], keypoints[i], im_keypoints, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+        imshow(sprintf("keypoints %d", i), im_keypoints);
+        imwrite(sprintf("/tmp/keypoints%d.jpg", i), im_keypoints);
+    }
+}
+
+void keypoints_bf(const Mat *images, vector<KeyPoint> *keypoints, vector<DMatch> &matches)
+{
+    Mat desc[2];
+    SurfFeatureDetector detector(400);
+
+    for(int i = 0; i < 2; ++i){
+        detector(images[i], Mat(), keypoints[i], desc[i]);
+        printf("find %d keypoints\n", (int)keypoints[i].size());
+
+        Mat im_keypoints;
+        drawKeypoints(images[i], keypoints[i], im_keypoints, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+        /*Mat canny;
+        vector<Vec4i> lines;
+        Canny(images[i], canny, 10, 100);
+        //cvtColor(canny, grayscale, CV_GRAY2BGR );
+        HoughLinesP(canny, lines, 1, CV_PI/180, 100, 30, 10);
+        for(size_t i = 0; i < lines.size(); ++i)
+            line(im_keypoints, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3);
+        */
+
+        imshow(sprintf("keypoints %d", i), im_keypoints);
+        imwrite(sprintf("/tmp/keypoints%d.jpg", i), im_keypoints);
+    }
+
+    //FlannBasedMatcher matcher;
+    BFMatcher matcher;
+    matcher.match(desc[0], desc[1], matches);
+}
+
+int recon_stereo(const Mat *images, const Camera &cam)
+{
+    vector<KeyPoint> keypoints[2];
+    vector<DMatch> matches;
+
+    keypoints_bf(images, keypoints, matches);
+    //keypoints_optical_flow(images, keypoints, matches);
+
+    Mat mask;
+    Mat homo = find_homography(keypoints, matches, mask);
 
     Mat im_matches;
     drawMatches(images[0], keypoints[0], images[1], keypoints[1], matches, im_matches, Scalar::all(-1), Scalar::all(-1), mask);
     imshow("matches", im_matches);
-    imwrite(sprintf("/tmp/matches.jpg"), im_matches);
+    imwrite("/tmp/matches.jpg", im_matches);
 
-/*  Mat points[2] = {Mat(n, 2, CV_32FC1), Mat(n, 2, CV_32FC1)};
+    keypoints[1] = reorder(keypoints[1], matches);
+    keypoints[0] = filter(keypoints[0], mask);
+    keypoints[1] = filter(keypoints[1], mask);
 
-    for(int i = 0; i < 2; ++i)for(int j = 0; j < n; ++j){
-        points[i].at<float>(j, 0) = keypoints[i][j].pt.x;
-        points[i].at<float>(j, 1) = keypoints[i][j].pt.y;
+    {
+        int n = keypoints[0].size();
+
+        Mat points[2] = {Mat(n, 2, CV_32FC1), Mat(n, 2, CV_32FC1)};
+
+        for(int i = 0; i < 2; ++i)for(int j = 0; j < n; ++j){
+            points[i].at<float>(j, 0) = keypoints[i][j].pt.x;
+            points[i].at<float>(j, 1) = keypoints[i][j].pt.y;
+        }
+
+        Mat fund = findFundamentalMat(points[0], points[1]);
+        cout << "fundamental matrix" << endl << fund << endl;
+
+        Mat ess = cam.intrin.t() * fund * cam.intrin;
+        cout << "essensial matrix" << endl << ess << endl;
     }
 
-    Mat mask;
-    Mat fund = findFundamentalMat(points[0], points[1], mask);
-    cout << fund << endl;
-
-    Mat corr_points[2];
-    int rows = n*2;
-    correctMatches(fund, points[0].reshape(0, 1, &rows), points[1].reshape(0, 1, &rows), corr_points[0], corr_points[1]);
-*/
     waitKey();
 
     return 0;
+}
+
+bool read(VideoCapture &capture, const Camera &cam, Mat &dst)
+{
+    Mat raw;
+    Mat image;
+    if(capture.read(raw)){
+        undistort(raw, image, cam.intrin, cam.dist);
+        bilateralFilter(image, dst, -1, 10, 10);
+        return true;
+    }
+    return false;
 }
 
 int try_recon(VideoCapture &capture, const Camera &cam)
 {
     Mat images[2];
 
-    if(!capture.read(images[0])){
+    if(!read(capture, cam, images[0])){
         printf("empty video\n");
         return -1;
     }
 
-    if(capture.read(images[1])){
+    if(read(capture, cam, images[1])){
         printf("reconstruct pair...\n");
         recon_stereo(images, cam);
         images[0] = images[1];
