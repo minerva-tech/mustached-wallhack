@@ -50,21 +50,28 @@ static std::vector<std::vector<cv::Point3f> > fill_obj_points(int w, int h)
 	const double x_step = 1./(double)w;
 	const double y_step = 1./(double)h;
 
+	const double x_off = 0;
+	const double y_off = 0;
+
 	for(uint32_t i=0; i<m.size(); i++) {
 		const double x = i % (w-1);
 		const double y = i / (h-1);
 
-		m[i].x = (float)(x * x_step);
-		m[i].y = (float)(y * y_step);
+		m[i].x = (float)(x * x_step) + x_off;
+		m[i].y = (float)(y * y_step) + y_off;
 		m[i].z = 0.;
 	}
+
+#if !(STEREO_CALIBRATE)
+	ms.push_back(ms.back());
+#endif
 
 	return ms;
 }
 
 static void write_scene(std::ofstream& fstr, const cv::Mat& pts, const std::vector<cv::Vec3b> colors) // todo: the same as draw_cube
 {
-	const float d = 0.0005;
+	const float d = 0.005;
 
 	for (int i = 0; i < pts.cols; i++) {
 		const float x = pts.at<float>(X, i);// / pts.at<float>(3, i);
@@ -133,7 +140,7 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 
 	brisk(base_fr, cv::Mat(), keypoints_base, desc_base, false);
 	brisk(cur_fr, cv::Mat(), keypoints_cur, desc_cur, false);
-
+	/*
 	cv::Mat projPt_base(2, keypoints_base.size(), CV_32F);
 //	cv::Mat projPt_cur(2, keypoints_cur.size(), CV_32F);
 
@@ -152,6 +159,7 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 	cv::calcOpticalFlowPyrLK(base_fr, cur_fr, keypoints_base_2d, keypoints_moved, status, err);
 
 	int matches = 0;
+	*/
 	/*
 	for (size_t i = 0; i < keypoints_base.size(); i++) {
 		for (size_t j = 0; j < keypoints_cur.size(); j++) {
@@ -171,11 +179,19 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 			}
 		}
 	}
-	*/
-//	projPt_base = g_projPt_base;
-//	projPt_cur = g_projPt_cur;
 
 	matches = keypoints_moved.cols;
+
+	*/
+
+	cv::Mat projPt_base = g_projPt_base;
+	cv::Mat projPt_cur = g_projPt_cur;
+	
+	std::vector<cv::Vec3b> colors;
+
+	std::fill_n(std::inserter(colors, colors.begin()), projPt_base.cols, cv::Vec3b(255, 255, 255));
+
+	/*
 	cv::Mat projPt_cur(2, matches, CV_32F);
 
 	std::cout << "matches: " << matches << std::endl;
@@ -194,9 +210,10 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 		projPt_cur.at<float>(X, i) = keypoints_moved.at<cv::Point2f>(0, i).x;
 		projPt_cur.at<float>(Y, i) = keypoints_moved.at<cv::Point2f>(0, i).y;
 	}
-
+	
 	projPt_base = projPt_base.colRange(0, matches);
 	projPt_cur = projPt_cur.colRange(0, matches);
+	*/
 
 	/*
 ////
@@ -231,10 +248,10 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 
 /*	std::cout << projMat_base << std::endl;
 	std::cout << projMat_cur << std::endl;
-
+	
 	std::cout << projPt_base << std::endl;
-	std::cout << projPt_cur << std::endl;*/
-
+	std::cout << projPt_cur << std::endl;
+	*/
 //	cv::triangulatePoints(projMat_base, projMat_cur, projPt_base, projPt_cur, out);
 	cv::triangulatePoints(P0, P1, projPt_base, projPt_cur, out);
 
@@ -313,6 +330,9 @@ void IScanner::Impl::process()
 	cv::Mat E;
 	cv::Mat F;
 
+	std::vector<cv::Mat> rots;
+	std::vector<cv::Mat> transes;
+
     const int len = (m_settings.n_chessboard_cols-1) * (m_settings.n_chessboard_rows-1);
 
     const double ANGLE_THRES = CV_PI / 4.; // if angle between two camera positions is bigger than this, chessboard should be rotated. I suppose that there is no large jumps in video sequence. All neighbor frames are close each other.
@@ -320,9 +340,33 @@ void IScanner::Impl::process()
     for(auto base_fr = m_frames.begin(); base_fr+1 != m_frames.end(); ++base_fr) {
         for(auto cur_fr = base_fr+1; cur_fr != m_frames.end(); ++cur_fr) {
             int tries = 0;
+
+//			cv::Mat initial_cam = cv::initCameraMatrix2D(g_obj_points, base_fr->corners, cv::Size(base_fr->img.cols, base_fr->img.rows), 0);
+//			std::cout << initial_cam << std::endl;
+//			initial_cam.copyTo(camera[0]);
+
             while (tries++ < 4) {
-                double err = cv::stereoCalibrate(g_obj_points, base_fr->corners, cur_fr->corners, camera[0], dist[0], camera[1], dist[1], cvSize(1, len), rot, trans, E, F, 
-    		        cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 30, 1e-6), CV_CALIB_SAME_FOCAL_LENGTH | CV_CALIB_ZERO_TANGENT_DIST);
+#if STEREO_CALIBRATE
+//                double err = cv::stereoCalibrate(g_obj_points, base_fr->corners, cur_fr->corners, camera[0], dist[0], camera[1], dist[1], cvSize(1, len), rot, trans, E, F, 
+//    		        cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 30, 1e-6), CV_CALIB_SAME_FOCAL_LENGTH | CV_CALIB_ZERO_TANGENT_DIST);
+#else
+/*				std::vector<cv::Mat> corners;
+
+				corners.push_back(cv::Mat(2, base_fr->corners.size(), CV_32F));
+				for (int i = 0; i < base_fr->corners[0].size(); i++) {
+					corners.back().at<float>(X, i) = base_fr->corners[0][i].x;
+					corners.back().at<float>(Y, i) = base_fr->corners[0][i].y;
+				}
+				corners.push_back(cv::Mat(2, cur_fr->corners.size(), CV_32F));
+				for (int i = 0; i < cur_fr->corners[0].size(); i++) {
+					corners.back().at<float>(X, i) = cur_fr->corners[0][i].x;
+					corners.back().at<float>(Y, i) = cur_fr->corners[0][i].y;
+				}*/
+
+				base_fr->corners.push_back(cur_fr->corners[0]);
+
+				double err = cv::calibrateCamera(g_obj_points, base_fr->corners, cv::Size(base_fr->img.cols, base_fr->img.rows), camera[0], dist[0], rots, transes);
+#endif // #if STEREO_CALIBRATE
 
 				std::cout << "Reprojection error : " << err << std::endl;
 
@@ -330,12 +374,14 @@ void IScanner::Impl::process()
 				std::cout << "camera[0] : " << camera[0] << std::endl;
 				std::cout << "camera[1] : " << camera[1] << std::endl;
 
+				break;
+
                 cv::Mat rot_;
                 cv::Rodrigues(rot, rot_);
 
                 double angle = cv::norm(rot_);
 
-                if (1 || angle < ANGLE_THRES) {
+                if (angle < ANGLE_THRES) {
                     std::cout << "Angle: " << angle << std::endl;
 
                     std::cout << "Trans: " << rot*trans << std::endl;
@@ -355,15 +401,15 @@ void IScanner::Impl::process()
 
                 cur_fr->corners[0].swap(rotated);
             }
-
+			/*
 			cv::Mat img_undistorted;
-/*
+
 			cv::undistort(base_fr->img, img_undistorted, camera[0], dist[0]);
 			img_undistorted.copyTo(base_fr->img);
 			cv::undistort(cur_fr->img, img_undistorted, camera[1], dist[1]);
 			img_undistorted.copyTo(cur_fr->img);
-*/
-
+			cv::imwrite("points_base.jpg", base_fr->img);
+			*/
 			cv::Mat R[2], P[2], Q;
 
 //			cv::stereoRectify(camera[0], dist[0], camera[1], dist[1], cv::Size(base_fr->img.rows, base_fr->img.cols),
@@ -371,12 +417,24 @@ void IScanner::Impl::process()
 
 			P[0].create(3, 4, CV_64F);
 			P[1].create(3, 4, CV_64F);
+#if STEREO_CALIBRATE
+//			P[0].colRange(0, 3) = camera[0] * cv::Mat::eye(3, 3, CV_64F);
+//			P[0].colRange(3, 4) = cv::Mat::zeros(3, 1, CV_64F);
 
-			P[0].colRange(0, 3) = camera[0] * cv::Mat::eye(3, 3, CV_64F);
-			P[0].colRange(3, 4) = cv::Mat::zeros(3, 1, CV_64F);
+//			P[1].colRange(0, 3) = camera[1] * rot;
+//			P[1].colRange(3, 4) = camera[1] * trans;
+#else
+			cv::Mat rot;
 
-			P[1].colRange(0, 3) = camera[1] * rot;
-			P[1].colRange(3, 4) = camera[1] * trans;
+			cv::Rodrigues(rots[0], rot);
+			P[0].colRange(0, 3) = camera[0] * rot;
+			P[0].colRange(3, 4) = camera[0] * transes[0];
+
+			cv::Rodrigues(rots[1], rot); 
+			P[1].colRange(0, 3) = camera[0] * rot;
+			P[1].colRange(3, 4) = camera[0] * transes[1];
+
+#endif // #if STEREO_CALIBRATE
 
 			std::cout << "proj mat0: " << P[0] << std::endl;
 			std::cout << "proj mat1: " << P[1] << std::endl;
@@ -384,7 +442,7 @@ void IScanner::Impl::process()
             if (tries >= 4) {
                 std::cout << "calibration failed" << std::endl;
 			} else {
-				cur_fr->diff[base_fr->idx].rot = rot;
+				cur_fr->diff[base_fr->idx].rot   = rot;
 				cur_fr->diff[base_fr->idx].trans = trans;
 
 //				draw_camera(trans, rot, cur_fr->idx);
