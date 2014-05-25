@@ -76,7 +76,7 @@ static void write_scene(std::ofstream& fstr, const cv::Mat& pts, const std::vect
 	for (int i = 0; i < pts.cols; i++) {
 		const float x = pts.at<float>(X, i);// / pts.at<float>(3, i);
 		const float y = pts.at<float>(Y, i);// / pts.at<float>(3, i);
-		const float z = pts.at<float>(Z, i) / 100.;// / pts.at<float>(3, i);
+		const float z = pts.at<float>(Z, i);// / pts.at<float>(3, i);
 
 		const int color[3] = { colors[i][0], colors[i][1], colors[i][2] };
 
@@ -140,7 +140,7 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 
 	brisk(base_fr, cv::Mat(), keypoints_base, desc_base, false);
 	brisk(cur_fr, cv::Mat(), keypoints_cur, desc_cur, false);
-	/*
+	
 	cv::Mat projPt_base(2, keypoints_base.size(), CV_32F);
 //	cv::Mat projPt_cur(2, keypoints_cur.size(), CV_32F);
 
@@ -157,9 +157,8 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 		keypoints_base_2d.push_back(keypoints_base[i].pt);
 
 	cv::calcOpticalFlowPyrLK(base_fr, cur_fr, keypoints_base_2d, keypoints_moved, status, err);
-
+	
 	int matches = 0;
-	*/
 	/*
 	for (size_t i = 0; i < keypoints_base.size(); i++) {
 		for (size_t j = 0; j < keypoints_cur.size(); j++) {
@@ -179,19 +178,18 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 			}
 		}
 	}
-
+	*/
 	matches = keypoints_moved.cols;
 
-	*/
 
-	cv::Mat projPt_base = g_projPt_base;
+/*	cv::Mat projPt_base = g_projPt_base;
 	cv::Mat projPt_cur = g_projPt_cur;
 	
 	std::vector<cv::Vec3b> colors;
 
 	std::fill_n(std::inserter(colors, colors.begin()), projPt_base.cols, cv::Vec3b(255, 255, 255));
-
-	/*
+	*/
+	
 	cv::Mat projPt_cur(2, matches, CV_32F);
 
 	std::cout << "matches: " << matches << std::endl;
@@ -213,7 +211,7 @@ static void recon_scene(std::ofstream& fstr, const cv::Mat& trans, const cv::Mat
 	
 	projPt_base = projPt_base.colRange(0, matches);
 	projPt_cur = projPt_cur.colRange(0, matches);
-	*/
+	
 
 	/*
 ////
