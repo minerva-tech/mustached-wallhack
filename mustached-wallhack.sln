@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2012 for Windows Desktop
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "calibrate_camera", "calibrate_camera\calibrate_camera.vcxproj", "{807ED350-502B-4B4F-8846-9F493B8B6F24}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "app_recon", "app_recon\app_recon.vcxproj", "{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}"
@@ -10,21 +12,35 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
 		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Debug|Win32.ActiveCfg = Debug|Win32
 		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Debug|Win32.Build.0 = Debug|Win32
+		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Debug|x64.ActiveCfg = Debug|x64
+		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Debug|x64.Build.0 = Debug|x64
 		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Release|Win32.ActiveCfg = Release|Win32
 		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Release|Win32.Build.0 = Release|Win32
+		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Release|x64.ActiveCfg = Release|x64
+		{807ED350-502B-4B4F-8846-9F493B8B6F24}.Release|x64.Build.0 = Release|x64
 		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Debug|Win32.ActiveCfg = Debug|Win32
 		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Debug|Win32.Build.0 = Debug|Win32
+		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Debug|x64.ActiveCfg = Debug|x64
+		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Debug|x64.Build.0 = Debug|x64
 		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Release|Win32.ActiveCfg = Release|Win32
 		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Release|Win32.Build.0 = Release|Win32
+		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Release|x64.ActiveCfg = Release|x64
+		{D04EB8DF-49FB-4CAC-A0F1-6D48FBB013FB}.Release|x64.Build.0 = Release|x64
 		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Debug|Win32.ActiveCfg = Debug|Win32
 		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Debug|Win32.Build.0 = Debug|Win32
+		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Debug|x64.ActiveCfg = Debug|x64
+		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Debug|x64.Build.0 = Debug|x64
 		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Release|Win32.ActiveCfg = Release|Win32
 		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Release|Win32.Build.0 = Release|Win32
+		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Release|x64.ActiveCfg = Release|x64
+		{1B17D045-A5D8-4D56-A7E5-44ACCB92C50B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

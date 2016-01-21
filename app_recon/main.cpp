@@ -4,8 +4,9 @@
 #include "opencv2/highgui/highgui.hpp"
 
 #ifdef _DEBUG
-#pragma comment(lib, "opencv_core247d.lib")
-#pragma comment(lib, "opencv_highgui247d.lib")
+//#pragma comment(lib, "opencv_core247d.lib")
+//#pragma comment(lib, "opencv_highgui247d.lib")
+#pragma comment(lib, "opencv_world310d.lib")
 #else
 #pragma comment(lib, "opencv_core247.lib")
 #pragma comment(lib, "opencv_highgui247.lib")
