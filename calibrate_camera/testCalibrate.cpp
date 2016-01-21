@@ -8,7 +8,7 @@
 #include <string>
 #include <time.h>
 
-
+#ifdef _MSC_VER
 #ifdef _DEBUG
 #pragma comment(lib, "opencv_world310d.lib")
 #else
@@ -18,6 +18,7 @@
 #pragma comment(lib, "opencv_nonfree247.lib")
 #pragma comment(lib, "opencv_calib3d247.lib")
 #pragma comment(lib, "opencv_imgproc247.lib")
+#endif
 #endif
 
 using namespace cv;

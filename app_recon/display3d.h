@@ -69,7 +69,7 @@ private:
 	bool is_simple_mode;
 
 	list<DisplayedCamera> cams;
-	list<vector<Point3d>> objs;
+    list<vector<Point3d>> objs;
 	Chessboard chessboard;
 	
 	Point3d min_pos;
